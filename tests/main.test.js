@@ -96,6 +96,14 @@ describe('Main App', () => {
     expect(banner).not.toBeNull();
   });
 
+  it('beforeunload calls stopRealtimeSync', async () => {
+    const { stopRealtimeSync } = await import('../src/services/cache.js');
+    const app = document.getElementById('app');
+    await init(app);
+    window.dispatchEvent(new Event('beforeunload'));
+    expect(stopRealtimeSync).toHaveBeenCalled();
+  });
+
   it('init() without appEl uses document.getElementById fallback', async () => {
     document.body.innerHTML = '<div id="app"></div>';
     await init();

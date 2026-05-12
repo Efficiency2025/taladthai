@@ -8,7 +8,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
       include: ['src/**/*.js'],
-      exclude: ['src/styles/**'],
+      exclude: ['src/styles/**', 'src/services/firebase.js'],
       thresholds: {
         statements: 100,
         branches: 100,

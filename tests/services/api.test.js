@@ -284,6 +284,83 @@ describe('API Service — Firestore Mode', () => {
     const unsub = api.subscribeToUpdates(onUpdate);
     expect(typeof unsub).toBe('function');
   });
+
+  it('subscribeToUpdates() fires onUpdate callback when onSnapshot triggers', async () => {
+    const onUpdate = vi.fn();
+    const unsubParticipantsFn = vi.fn();
+    const unsubBoothFn = vi.fn();
+
+    // Capture snapshot callbacks when onSnapshot is called
+    let participantCallback, boothCallback;
+    mockOnSnapshot.mockImplementation((_ref, cb) => {
+      if (!participantCallback) {
+        participantCallback = cb;
+        return unsubParticipantsFn;
+      } else {
+        boothCallback = cb;
+        return unsubBoothFn;
+      }
+    });
+
+    api.subscribeToUpdates(onUpdate);
+
+    // Wait for the async IIFE to resolve
+    await vi.waitFor(() => expect(mockOnSnapshot).toHaveBeenCalledTimes(2));
+
+    // Simulate participant snapshot
+    participantCallback({
+      docs: [
+        { id: 'p1', data: () => ({ 'ชื่อผู้ค้า': 'Test' }) },
+      ],
+    });
+    expect(onUpdate).toHaveBeenCalledWith({
+      participants: [{ _docId: 'p1', 'ชื่อผู้ค้า': 'Test' }],
+      boothMapping: [],
+    });
+
+    // Simulate booth snapshot
+    boothCallback({
+      docs: [
+        { id: 'b1', data: () => ({ 'ตลาด': 'X' }) },
+      ],
+    });
+    expect(onUpdate).toHaveBeenCalledWith({
+      participants: [{ _docId: 'p1', 'ชื่อผู้ค้า': 'Test' }],
+      boothMapping: [{ _docId: 'b1', 'ตลาด': 'X' }],
+    });
+  });
+
+  it('subscribeToUpdates() unsubscribe cleans up both listeners', async () => {
+    const onUpdate = vi.fn();
+    const unsubParticipantsFn = vi.fn();
+    const unsubBoothFn = vi.fn();
+
+    let callNum = 0;
+    mockOnSnapshot.mockImplementation((_ref, _cb) => {
+      callNum++;
+      return callNum === 1 ? unsubParticipantsFn : unsubBoothFn;
+    });
+
+    const unsub = api.subscribeToUpdates(onUpdate);
+
+    // Wait for async setup to complete
+    await vi.waitFor(() => expect(mockOnSnapshot).toHaveBeenCalledTimes(2));
+
+    // Call unsubscribe
+    unsub();
+    expect(unsubParticipantsFn).toHaveBeenCalled();
+    expect(unsubBoothFn).toHaveBeenCalled();
+  });
+
+  it('subscribeToUpdates() unsubscribe is safe before async init completes', () => {
+    // unsubParticipants and unsubBooth are null until the async IIFE resolves
+    const onUpdate = vi.fn();
+    mockOnSnapshot.mockReturnValue(vi.fn());
+
+    const unsub = api.subscribeToUpdates(onUpdate);
+    // Call immediately — before the async IIFE has resolved
+    unsub(); // Should not throw
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════
