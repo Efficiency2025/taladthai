@@ -11,12 +11,41 @@ import { renderSearch, getSearchResult } from './pages/search.js';
 import { renderInfo } from './pages/info.js';
 import { CONFIG } from './config.js';
 
+/* ──── Debug banner (visible in deployed page) ──── */
+function showDebugBanner(msg, isError = false) {
+  const el = document.createElement('div');
+  el.style.cssText = `
+    position:fixed;bottom:0;left:0;right:0;z-index:99999;
+    padding:6px 12px;font:11px/1.4 monospace;
+    background:${isError ? '#d32f2f' : '#1b5e20'};color:#fff;
+    white-space:pre-wrap;word-break:break-all;max-height:40vh;overflow:auto;
+  `;
+  el.textContent = msg;
+  document.body.appendChild(el);
+}
+
 /**
  * Initialize the application.
  * @param {HTMLElement} [appEl] - optional app container override (for testing)
  */
 export async function init(appEl) {
+  console.log('[talad-thai] init() called');
+  console.log('[talad-thai] MODE:', import.meta.env.MODE);
+  console.log('[talad-thai] BASE_URL:', import.meta.env.BASE_URL);
+  console.log('[talad-thai] VITE_USE_MOCK_DATA:', import.meta.env.VITE_USE_MOCK_DATA);
+  console.log('[talad-thai] VITE_FIREBASE_PROJECT_ID:', import.meta.env.VITE_FIREBASE_PROJECT_ID);
+  console.log('[talad-thai] VITE_FIREBASE_API_KEY set:', !!import.meta.env.VITE_FIREBASE_API_KEY);
+  console.log('[talad-thai] CONFIG:', JSON.stringify(CONFIG));
+
   const app = appEl || document.getElementById('app');
+
+  if (!app) {
+    const errMsg = '[talad-thai] FATAL: #app element not found in DOM';
+    console.error(errMsg);
+    showDebugBanner(errMsg, true);
+    return;
+  }
+  console.log('[talad-thai] #app element found');
 
   // Show loading state
   app.innerHTML = `
@@ -26,11 +55,20 @@ export async function init(appEl) {
     </div>
   `;
 
-  // Load all participants into cache
-  await loadAll();
+  try {
+    // Load all participants into cache
+    console.log('[talad-thai] loadAll() starting...');
+    await loadAll();
+    console.log('[talad-thai] loadAll() complete');
+  } catch (err) {
+    const errMsg = `[talad-thai] loadAll() FAILED: ${err.message}\n${err.stack}`;
+    console.error(errMsg);
+    showDebugBanner(errMsg, true);
+  }
 
   // Set up page rendering callback
   onNavigate((route) => {
+    console.log('[talad-thai] navigate →', route);
     if (route === '/search') {
       renderSearch(app);
     } else if (route === '/info') {
@@ -40,9 +78,11 @@ export async function init(appEl) {
   });
 
   // Initialize router (triggers first render)
+  console.log('[talad-thai] initRouter()');
   initRouter();
 
   // Start real-time Firestore sync (replaces polling)
+  console.log('[talad-thai] startRealtimeSync()');
   startRealtimeSync();
 
   // Handle online/offline events
@@ -59,6 +99,15 @@ export async function init(appEl) {
   window.addEventListener('beforeunload', () => {
     stopRealtimeSync();
   });
+
+  console.log('[talad-thai] init() complete ✓');
+  showDebugBanner(
+    `[talad-thai] Boot OK\n` +
+    `MODE: ${import.meta.env.MODE}\n` +
+    `FIREBASE_PROJECT: ${import.meta.env.VITE_FIREBASE_PROJECT_ID || '(not set)'}\n` +
+    `MOCK: ${import.meta.env.VITE_USE_MOCK_DATA}\n` +
+    `Time: ${new Date().toISOString()}`
+  );
 }
 
 /**
@@ -83,5 +132,6 @@ export function showConnectionStatus(message) {
 // Auto-boot only when running in browser (not during tests)
 /* v8 ignore next 3 */
 if (!import.meta.env.VITEST) {
+  console.log('[talad-thai] Script loaded, calling init()...');
   init();
 }
