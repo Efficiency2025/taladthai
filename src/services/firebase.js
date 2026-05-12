@@ -25,6 +25,16 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 
 /**
+ * Named database ID — allows dev and prod to use separate Firestore
+ * databases within the same Firebase project.
+ *
+ * Set VITE_FIREBASE_DATABASE_ID in your .env files:
+ *   - development → "development"
+ *   - production  → "(default)"   (or omit the var entirely)
+ */
+const databaseId = import.meta.env.VITE_FIREBASE_DATABASE_ID || '(default)';
+
+/**
  * Firestore instance with offline persistence enabled.
  * Uses IndexedDB for multi-tab offline support so the app
  * works reliably even with poor WiFi at the event venue.
@@ -33,4 +43,4 @@ export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager(),
   }),
-});
+}, databaseId);
