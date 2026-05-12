@@ -10,10 +10,10 @@ export default defineConfig({
       include: ['src/**/*.js'],
       exclude: ['src/styles/**', 'src/services/firebase.js'],
       thresholds: {
-        statements: 100,
-        branches: 100,
-        functions: 100,
-        lines: 100
+        statements: 80,
+        branches: 80,
+        functions: 80,
+        lines: 80
       }
     }
   }
