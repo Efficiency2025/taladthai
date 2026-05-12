@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Coverage
+coverage/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment (keep .env.example — it's the safe template)
+.env
+.env.local
+.env.development
+.env.production
+.env.*.local
+
+
+#Ignore vscode AI rules
+.github/instructions/codacy.instructions.md
