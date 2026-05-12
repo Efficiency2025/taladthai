@@ -11,18 +11,6 @@ import { renderSearch, getSearchResult } from './pages/search.js';
 import { renderInfo } from './pages/info.js';
 import { CONFIG } from './config.js';
 
-/* ──── Debug banner (visible in deployed page) ──── */
-function showDebugBanner(msg, isError = false) {
-  const el = document.createElement('div');
-  el.style.cssText = `
-    position:fixed;bottom:0;left:0;right:0;z-index:99999;
-    padding:6px 12px;font:11px/1.4 monospace;
-    background:${isError ? '#d32f2f' : '#1b5e20'};color:#fff;
-    white-space:pre-wrap;word-break:break-all;max-height:40vh;overflow:auto;
-  `;
-  el.textContent = msg;
-  document.body.appendChild(el);
-}
 
 /**
  * Initialize the application.
@@ -42,7 +30,6 @@ export async function init(appEl) {
   if (!app) {
     const errMsg = '[talad-thai] FATAL: #app element not found in DOM';
     console.error(errMsg);
-    showDebugBanner(errMsg, true);
     return;
   }
   console.log('[talad-thai] #app element found');
@@ -63,7 +50,6 @@ export async function init(appEl) {
   } catch (err) {
     const errMsg = `[talad-thai] loadAll() FAILED: ${err.message}\n${err.stack}`;
     console.error(errMsg);
-    showDebugBanner(errMsg, true);
   }
 
   // Set up page rendering callback
@@ -101,13 +87,6 @@ export async function init(appEl) {
   });
 
   console.log('[talad-thai] init() complete ✓');
-  showDebugBanner(
-    `[talad-thai] Boot OK\n` +
-    `MODE: ${import.meta.env.MODE}\n` +
-    `FIREBASE_PROJECT: ${import.meta.env.VITE_FIREBASE_PROJECT_ID || '(not set)'}\n` +
-    `MOCK: ${import.meta.env.VITE_USE_MOCK_DATA}\n` +
-    `Time: ${new Date().toISOString()}`
-  );
 }
 
 /**
