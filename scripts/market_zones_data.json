@@ -1,0 +1,87 @@
+[
+  {
+    "id": 1,
+    "name": "ลานผัก",
+    "registration_booth": "Registration Booth 1"
+  },
+  {
+    "id": 2,
+    "name": "เต็นท์ผัก (ลาน)",
+    "registration_booth": "Registration Booth 2"
+  },
+  {
+    "id": 3,
+    "name": "ทุ่งนก",
+    "registration_booth": "Registration Booth 3"
+  },
+  {
+    "id": 4,
+    "name": "พืชไร่",
+    "registration_booth": "Registration Booth 4"
+  },
+  {
+    "id": 5,
+    "name": "หอม-กระเทียม",
+    "registration_booth": "Registration Booth 5"
+  },
+  {
+    "id": 6,
+    "name": "ปลาร้า",
+    "registration_booth": "Registration Booth 6"
+  },
+  {
+    "id": 7,
+    "name": "ผักร่วมใจ",
+    "registration_booth": "Registration Booth 7"
+  },
+  {
+    "id": 8,
+    "name": "ผักปลอดภัย",
+    "registration_booth": "Registration Booth 8"
+  },
+  {
+    "id": 9,
+    "name": "ของแห้ง",
+    "registration_booth": "Registration Booth 9"
+  },
+  {
+    "id": 10,
+    "name": "ผลไม้ต่างประเทศ",
+    "registration_booth": "Registration Booth 10"
+  },
+  {
+    "id": 11,
+    "name": "ผลไม้ฤดูกาล (แตงโม)",
+    "registration_booth": "Registration Booth 11"
+  },
+  {
+    "id": 12,
+    "name": "ส้ม",
+    "registration_booth": "Registration Booth 12"
+  },
+  {
+    "id": 13,
+    "name": "สับปะรด",
+    "registration_booth": "Registration Booth 13"
+  },
+  {
+    "id": 14,
+    "name": "ตลาดไทซีเล็ค (ส้ม)",
+    "registration_booth": "Registration Booth 14"
+  },
+  {
+    "id": 15,
+    "name": "ผักสมุนไพร1",
+    "registration_booth": "Registration Booth 17"
+  },
+  {
+    "id": 16,
+    "name": "ผักสมุนไพร2",
+    "registration_booth": "Registration Booth 18"
+  },
+  {
+    "id": 17,
+    "name": "ผักสมุนไพร2",
+    "registration_booth": "Registration Booth 19"
+  }
+]

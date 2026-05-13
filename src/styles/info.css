@@ -120,6 +120,11 @@
   color: #e65100;
 }
 
+.status-partial {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
 .status-approved {
   background: #e8f5e9;
   color: #2e7d32;
@@ -239,6 +244,66 @@
   border: 2px solid #ddd;
   border-radius: var(--radius-md);
   transition: border-color var(--transition-fast);
+}
+
+/* --- Per-Table Check-in Buttons (multi-table participants) --- */
+.table-checkin-btn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 16px;
+  font-family: var(--font-family);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--table-accent, #2e7d32);
+  background: #fff;
+  border: 2px solid var(--table-accent, #2e7d32);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition:
+    background var(--transition-fast),
+    color var(--transition-fast),
+    box-shadow var(--transition-fast),
+    transform var(--transition-fast);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  min-width: 100px;
+}
+
+.table-checkin-btn:hover:not([disabled]) {
+  background: color-mix(in srgb, var(--table-accent, #2e7d32) 10%, #fff);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.14);
+  transform: translateY(-1px);
+}
+
+.table-checkin-btn:active:not([disabled]) {
+  transform: scale(0.97);
+}
+
+.table-checkin-btn.approved {
+  background: var(--table-accent, #2e7d32);
+  color: #fff;
+  cursor: default;
+  box-shadow: none;
+}
+
+.table-checkin-btn[disabled]:not(.approved) {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.table-checkin-num {
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  line-height: 1.2;
+}
+
+.table-status-chip {
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.85;
+  white-space: nowrap;
 }
 
 /* --- Approved Timestamp --- */

@@ -171,4 +171,104 @@ describe('Search Page', () => {
 
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('#/info'));
   });
+
+  it('typing into input hides existing results panel', () => {
+    renderSearch(container);
+    // First show results
+    const matches = [
+      { 'ลำดับ': 1, 'ชื่อผู้ค้า': 'สมชาย ก', 'ตลาด': 'X', 'ชื่อร้าน': 'Shop', 'เลขที่โต๊ะ': 'A1', _docId: 'doc-a' },
+      { 'ลำดับ': 2, 'ชื่อผู้ค้า': 'สมชาย ข', 'ตลาด': 'Y', 'ชื่อร้าน': 'Shop2', 'เลขที่โต๊ะ': 'B2', _docId: 'doc-b' },
+    ];
+    search.mockReturnValue({ type: 'multiple', participants: matches });
+    container.querySelector('#search-input').value = 'สมชาย';
+    container.querySelector('#search-btn').click();
+
+    const resultsEl = container.querySelector('#search-results');
+    expect(resultsEl.classList.contains('hidden')).toBe(false);
+
+    // Now simulate the user typing again
+    const input = container.querySelector('#search-input');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Results should be hidden and cleared
+    expect(resultsEl.classList.contains('hidden')).toBe(true);
+    expect(resultsEl.innerHTML).toBe('');
+  });
+
+  it('renderSearchResults handles participants with missing optional fields', () => {
+    renderSearch(container);
+    const matches = [
+      // No ชื่อผู้ค้า, no ชื่อร้าน, no เลขที่โต๊ะ
+      { 'ลำดับ': 1, 'ตลาด': 'X', _docId: 'doc-empty' },
+    ];
+    search.mockReturnValue({ type: 'multiple', participants: matches });
+
+    container.querySelector('#search-input').value = 'X';
+    container.querySelector('#search-btn').click();
+
+    const items = container.querySelectorAll('.search-result-item');
+    expect(items.length).toBe(1);
+    // Name defaults to empty, table defaults to '-', shop span is omitted
+    const item = items[0];
+    expect(item.querySelector('.result-name').textContent).toBe('');
+    // No shop span should be rendered when ชื่อร้าน is absent
+    expect(item.querySelector('.result-shop')).toBeNull();
+    // Table badge defaults to '-'
+    expect(item.querySelector('.result-table').textContent).toContain('-');
+  });
+
+  it('input event clears error and hides results panel (resultsEl truthy branch)', () => {
+    // The #search-results div is always in the template (just hidden).
+    // This test covers the if (resultsEl) true branch: it adds 'hidden' and clears innerHTML.
+    renderSearch(container);
+    const resultsEl = container.querySelector('#search-results');
+    // Simulate results being shown first
+    resultsEl.classList.remove('hidden');
+    resultsEl.innerHTML = '<div class="search-result-item">dummy</div>';
+    expect(resultsEl.classList.contains('hidden')).toBe(false);
+
+    const input = container.querySelector('#search-input');
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // After input event: error cleared, results hidden and emptied
+    expect(container.querySelector('#search-error').textContent).toBe('');
+    expect(resultsEl.classList.contains('hidden')).toBe(true);
+    expect(resultsEl.innerHTML).toBe('');
+  });
+
+  it('renderSearchResults renders correctly when ตลาด is missing', () => {
+    // Tests the || '' fallback branch for ตลาด (L150)
+    renderSearch(container);
+    const matches = [
+      // No ตลาด field at all
+      { 'ลำดับ': 1, 'ชื่อผู้ค้า': 'ผู้ค้าทดสอบ', 'ชื่อร้าน': 'ShopX', 'เลขที่โต๊ะ': 'A1', _docId: 'doc-z' },
+    ];
+    search.mockReturnValue({ type: 'multiple', participants: matches });
+
+    container.querySelector('#search-input').value = 'ผู้ค้า';
+    container.querySelector('#search-btn').click();
+
+    const items = container.querySelectorAll('.search-result-item');
+    expect(items.length).toBe(1);
+    // ตลาด defaults to '' so result-market is empty text
+    expect(items[0].querySelector('.result-market').textContent).toBe('');
+  });
+
+  it('renderSearchResults renders correctly when ลำดับ is missing (L153 || branch)', () => {
+    // Tests the `|| ''` fallback branch for ลำดับ (search.js L153)
+    renderSearch(container);
+    const matches = [
+      // No ลำดับ field at all
+      { 'ชื่อผู้ค้า': 'ผู้ค้าไร้ลำดับ', 'ตลาด': 'ตลาด X', 'ชื่อร้าน': '', 'เลขที่โต๊ะ': 'B2', _docId: 'doc-noseq' },
+    ];
+    search.mockReturnValue({ type: 'multiple', participants: matches });
+
+    container.querySelector('#search-input').value = 'ผู้ค้า';
+    container.querySelector('#search-btn').click();
+
+    const items = container.querySelectorAll('.search-result-item');
+    expect(items.length).toBe(1);
+    // Should render without errors even with no ลำดับ
+    expect(items[0].querySelector('.result-name').textContent).toBe('ผู้ค้าไร้ลำดับ');
+  });
 });

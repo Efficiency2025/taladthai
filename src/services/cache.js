@@ -90,7 +90,8 @@ export function getBoothMapping() {
 
 /**
  * Look up booth info for a given market name.
- * @param {string} marketName - the market/zone name (ตลาด)
+ * Data comes from the 'market_zones' collection (field: name, registrationBooths, banquetSeats).
+ * @param {string} marketName - the market/zone name (ตลาด field on participants)
  * @returns {{ บูธลงทะเบียน: string, จำนวนที่นั่ง: number } | null}
  */
 export function getBoothInfo(marketName) {
@@ -98,11 +99,17 @@ export function getBoothInfo(marketName) {
 
   const normalized = marketName.trim();
   for (const entry of boothMapping) {
-    const entryMarket = String(entry['ตลาด'] || '').trim();
+    // market_zones docs use 'name' as the market identifier
+    const entryMarket = String(entry['name'] || entry['ตลาด'] || '').trim();
     if (entryMarket === normalized) {
+      // registrationBooths is an array; join for display or take first element
+      const booths = entry['registrationBooths'];
+      const boothDisplay = Array.isArray(booths)
+        ? booths.join(', ')
+        : String(entry['registrationBooths'] || entry['บูธลงทะเบียน'] || entry['โต๊ะลงทะเบียน'] || '');
       return {
-        'บูธลงทะเบียน': String(entry['บูธลงทะเบียน'] || entry['โต๊ะลงทะเบียน'] || ''),
-        'จำนวนที่นั่ง': Number(entry['จำนวนที่นั่งโต๊ะจีน'] || entry['จำนวนที่นั่ง'] || 0),
+        'บูธลงทะเบียน': boothDisplay,
+        'จำนวนที่นั่ง': Number(entry['banquetSeats'] || entry['จำนวนที่นั่งโต๊ะจีน'] || entry['จำนวนที่นั่ง'] || 0),
       };
     }
   }

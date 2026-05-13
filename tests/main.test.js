@@ -120,4 +120,21 @@ describe('Main App', () => {
     expect(renderSearch).not.toHaveBeenCalled();
     expect(renderInfo).not.toHaveBeenCalled();
   });
+
+  it('init() returns early when #app element is not found', async () => {
+    document.body.innerHTML = '';
+    const result = await init();
+    expect(result).toBeUndefined();
+    expect(loadAll).not.toHaveBeenCalled();
+    expect(initRouter).not.toHaveBeenCalled();
+  });
+
+  it('init() continues even when loadAll() throws', async () => {
+    loadAll.mockRejectedValue(new Error('Firestore unavailable'));
+    const app = document.getElementById('app');
+    // Should not throw — error is caught and logged
+    await expect(init(app)).resolves.toBeUndefined();
+    // Router still initialises after loadAll failure
+    expect(initRouter).toHaveBeenCalled();
+  });
 });

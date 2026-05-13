@@ -2,7 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Participants: anyone can read, only status fields can be updated
+    // ── participants ─────────────────────────────────────────────────────
+    // Public read. Only check-in status fields can be updated by clients.
+    // All other writes (create / delete / structural updates) are admin-only
+    // and performed via the Firebase Admin SDK (bypasses these rules).
     match /participants/{docId} {
       allow read: if true;
       allow update: if request.resource.data.diff(resource.data).affectedKeys()
@@ -10,10 +13,27 @@ service cloud.firestore {
       allow create, delete: if false;
     }
 
-    // Booth mapping: read-only
+    // ── boothMapping ──────────────────────────────────────────────────────
+    // Reference data for the check-in UI — read-only to clients.
     match /boothMapping/{docId} {
       allow read: if true;
       allow write: if false;
     }
+
+    // ── market_zones ──────────────────────────────────────────────────────
+    // Static reference data: market names, banquet seat counts, booths.
+    // Read-only to clients; seeded via Admin SDK.
+    match /market_zones/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── seats ─────────────────────────────────────────────────────────────
+    // Table/seat registry — read-only to clients; seeded via Admin SDK.
+    match /seats/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
   }
 }

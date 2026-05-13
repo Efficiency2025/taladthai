@@ -159,6 +159,30 @@ describe('Cache Service', () => {
     expect(result.participants.length).toBe(2);
   });
 
+  it('search() merges tables in multiple-name-match when a person has >1 rows', async () => {
+    // สมชาย ก has two rows (same name+phone = same person), สมชาย ข has one row
+    // Both match partial name ‘สมชาย’ → type=multiple
+    // The code at L245-248 runs for สมชาย ก because allRows.length > 1
+    const data = {
+      participants: [
+        { 'ลำดับ': 1, 'ชื่อผู้ค้า': 'สมชาย ก', 'เบอร์โทร': '0811111111', 'ชื่อร้าน': 'A', 'ตลาด': 'X', 'เลขที่โต๊ะ': 'A1', 'สถานะการเข้างาน': '', _docId: 'doc-a1' },
+        { 'ลำดับ': 2, 'ชื่อผู้ค้า': 'สมชาย ก', 'เบอร์โทร': '0811111111', 'ชื่อร้าน': 'A', 'ตลาด': 'X', 'เลขที่โต๊ะ': 'A2', 'สถานะการเข้างาน': '', _docId: 'doc-a2' },
+        { 'ลำดับ': 3, 'ชื่อผู้ค้า': 'สมชาย ข', 'เบอร์โทร': '0822222222', 'ชื่อร้าน': 'B', 'ตลาด': 'Y', 'เลขที่โต๊ะ': 'B2', 'สถานะการเข้างาน': '', _docId: 'doc-b1' },
+      ],
+      boothMapping: [],
+    };
+    fetchAll.mockResolvedValue(data);
+    await loadAll();
+
+    const result = search('สมชาย');
+    expect(result).not.toBeNull();
+    expect(result.type).toBe('multiple');
+    expect(result.participants.length).toBe(2);
+    // สมชาย ก should have joined table numbers A1 , A2
+    const somchaiK = result.participants.find(p => p['ชื่อผู้ค้า'] === 'สมชาย ก');
+    expect(somchaiK['เลขที่โต๊ะ']).toBe('A1 , A2');
+  });
+
   // ===================== Null/Empty =====================
 
   it('search() returns null for no match', async () => {
@@ -454,4 +478,168 @@ describe('Cache Service', () => {
     // ลำดับ search shouldn't match
     expect(search('1')).toBeNull();
   });
+
+  // ===================== Name Search Edge Cases =====================
+
+  it('search() skips participant with empty ชื่อผู้ค้า in name search loop', async () => {
+    // Participant with blank name should be filtered out by `name && ...` guard (L221)
+    const data = {
+      participants: [
+        { 'ลำดับ': 1, 'ชื่อผู้ค้า': '', 'เบอร์โทร': '0811111111', 'ชื่อร้าน': 'A', 'ตลาด': 'X', 'เลขที่โต๊ะ': 'A1', 'สถานะการเข้างาน': '', _docId: 'doc-blank' },
+        { 'ลำดับ': 2, 'ชื่อผู้ค้า': 'สมชาย ก', 'เบอร์โทร': '0822222222', 'ชื่อร้าน': 'B', 'ตลาด': 'Y', 'เลขที่โต๊ะ': 'B2', 'สถานะการเข้างาน': '', _docId: 'doc-match' },
+      ],
+      boothMapping: [],
+    };
+    fetchAll.mockResolvedValue(data);
+    await loadAll();
+
+    // Searching for 'สมชาย' should return only the second participant (blank-name one is skipped)
+    const result = search('สมชาย');
+    expect(result).not.toBeNull();
+    expect(result.type).toBe('single');
+    expect(result.participant['ชื่อผู้ค้า']).toBe('สมชาย ก');
+  });
+
+  it('search() deduplicates participants with same name+phone in name search (seen set)', async () => {
+    // Two rows with identical name+phone but different tables — should only appear once in nameMatches
+    // (i.e. findAllRowsForPerson picks up both rows, but they only enter nameMatches once)
+    const data = {
+      participants: [
+        { 'ลำดับ': 1, 'ชื่อผู้ค้า': 'สมชาย ก', 'เบอร์โทร': '0811111111', 'ชื่อร้าน': 'A', 'ตลาด': 'X', 'เลขที่โต๊ะ': 'X1', 'สถานะการเข้างาน': '', _docId: 'doc-x1' },
+        { 'ลำดับ': 2, 'ชื่อผู้ค้า': 'สมชาย ก', 'เบอร์โทร': '0811111111', 'ชื่อร้าน': 'A', 'ตลาด': 'X', 'เลขที่โต๊ะ': 'X2', 'สถานะการเข้างาน': '', _docId: 'doc-x2' },
+      ],
+      boothMapping: [],
+    };
+    fetchAll.mockResolvedValue(data);
+    await loadAll();
+
+    // Both rows have same name+phone → deduplicated → single unique name match → type:single with merged tables
+    const result = search('สมชาย');
+    expect(result).not.toBeNull();
+    expect(result.type).toBe('single');
+    expect(result.participant['เลขที่โต๊ะ']).toBe('X1 , X2');
+  });
+
+  it('search() falls back to mock-${index} _docId when participant has no _docId', async () => {
+    // Tests the `_docId || \`mock-${participants.indexOf(...)}\`` branch in buildSingleResult
+    const data = {
+      participants: [
+        // No _docId property at all
+        { 'ลำดับ': 1, 'ชื่อผู้ค้า': 'NoId', 'เบอร์โทร': '0833333333', 'ชื่อร้าน': 'X', 'ตลาด': 'X', 'เลขที่โต๊ะ': 'Z1', 'สถานะการเข้างาน': '' },
+      ],
+      boothMapping: [],
+    };
+    fetchAll.mockResolvedValue(data);
+    await loadAll();
+
+    const result = search('0833333333');
+    expect(result).not.toBeNull();
+    // _docId should be the mock fallback
+    expect(result.participant._docId).toMatch(/^mock-/);
+  });
+
+  it('getBoothInfo() joins registrationBooths array with comma', async () => {
+    // Tests the Array.isArray(booths) branch in getBoothInfo (L107-108)
+    const data = {
+      participants: [],
+      boothMapping: [
+        { _docId: 'zone-1', 'name': 'ตลาดทดสอบ', 'registrationBooths': ['1', '2', '3'], 'banquetSeats': 100 },
+      ],
+    };
+    fetchAll.mockResolvedValue(data);
+    await loadAll();
+
+    const info = getBoothInfo('ตลาดทดสอบ');
+    expect(info).not.toBeNull();
+    expect(info['บูธลงทะเบียน']).toBe('1, 2, 3');
+    expect(info['จำนวนที่นั่ง']).toBe(100);
+  });
+
+  // ===================== getZoneFromTable: no-letter branch (L135) =====================
+
+  it('getZoneFromTable() returns empty string when table starts with a digit', () => {
+    // Triggers the `: ''` false branch of `match ? match[1].toUpperCase() : ''`
+    expect(getZoneFromTable('123-4')).toBe('');
+    expect(getZoneFromTable('9ABC')).toBe('');
+  });
+
+  // ===================== search() empty nameQuery guard (L215) =====================
+
+  it('search() returns null when query normalizes to empty string for name search', async () => {
+    // A query of only whitespace normalizes to '' → nameQuery is empty → return null (L215)
+    const data = {
+      participants: [
+        { 'ลำดับ': 1, 'ชื่อผู้ค้า': 'Test', 'เบอร์โทร': '', 'ชื่อร้าน': '', 'ตลาด': 'X', 'เลขที่โต๊ะ': 'X1', 'สถานะการเข้างาน': '', _docId: 'doc-1' },
+      ],
+      boothMapping: [],
+    };
+    fetchAll.mockResolvedValue(data);
+    await loadAll();
+
+    // Pass a string that normalizeThaiName collapses to ''
+    // normalizeThaiName only trims/collapses whitespace, so a pure-whitespace input yields ''
+    expect(search('   ')).toBeNull();
+  });
+
+  // ===================== search() multiple name matches — findAllRowsForPerson (L241-252) =====================
+
+  it('search() returns multiple result list when two different people share partial name', async () => {
+    // Two participants with different names that both match the query
+    // → type:'multiple' → each runs through findAllRowsForPerson to merge tables (L241-252)
+    const data = {
+      participants: [
+        { 'ลำดับ': 1, 'ชื่อผู้ค้า': 'สมชาย ก', 'เบอร์โทร': '0811111111', 'ชื่อร้าน': 'A', 'ตลาด': 'X', 'เลขที่โต๊ะ': 'X1', 'สถานะการเข้างาน': '', _docId: 'doc-a1' },
+        // Same person appears in two rows (different tables) → merged by findAllRowsForPerson
+        { 'ลำดับ': 2, 'ชื่อผู้ค้า': 'สมชาย ก', 'เบอร์โทร': '0811111111', 'ชื่อร้าน': 'A', 'ตลาด': 'X', 'เลขที่โต๊ะ': 'X2', 'สถานะการเข้างาน': '', _docId: 'doc-a2' },
+        { 'ลำดับ': 3, 'ชื่อผู้ค้า': 'สมชาย ข', 'เบอร์โทร': '0822222222', 'ชื่อร้าน': 'B', 'ตลาด': 'Y', 'เลขที่โต๊ะ': 'Y3', 'สถานะการเข้างาน': '', _docId: 'doc-b' },
+      ],
+      boothMapping: [],
+    };
+    fetchAll.mockResolvedValue(data);
+    await loadAll();
+
+    const result = search('สมชาย');
+    expect(result).not.toBeNull();
+    expect(result.type).toBe('multiple');
+    expect(result.participants.length).toBe(2);
+
+    // สมชาย ก has two rows — merged เลขที่โต๊ะ should include both X1 and X2
+    const somchaiA = result.participants.find(p => p['ชื่อผู้ค้า'] === 'สมชาย ก');
+    expect(somchaiA).toBeDefined();
+    expect(somchaiA['เลขที่โต๊ะ']).toContain('X1');
+    expect(somchaiA['เลขที่โต๊ะ']).toContain('X2');
+  });
+
+  // ===================== getBoothInfo() non-Array registrationBooths (L107-109 false branch) =====================
+
+  it('getBoothInfo() uses string registrationBooths directly when not an array', async () => {
+    const data = {
+      participants: [],
+      boothMapping: [
+        { _docId: 'zone-str', 'name': 'ตลาดสตริง', 'registrationBooths': 'บูธ 5', 'banquetSeats': 50 },
+      ],
+    };
+    fetchAll.mockResolvedValue(data);
+    await loadAll();
+    const info = getBoothInfo('ตลาดสตริง');
+    expect(info).not.toBeNull();
+    expect(info['บูธลงทะเบียน']).toBe('บูธ 5');
+    expect(info['จำนวนที่นั่ง']).toBe(50);
+  });
+
+  it('getBoothInfo() falls back to บูธลงทะเบียน field when registrationBooths is absent', async () => {
+    const data = {
+      participants: [],
+      boothMapping: [
+        { _docId: 'zone-legacy', 'name': 'ตลาดเก่า', 'บูธลงทะเบียน': 'บูธ 9', 'จำนวนที่นั่งโต๊ะจีน': 200 },
+      ],
+    };
+    fetchAll.mockResolvedValue(data);
+    await loadAll();
+    const info = getBoothInfo('ตลาดเก่า');
+    expect(info).not.toBeNull();
+    expect(info['บูธลงทะเบียน']).toBe('บูธ 9');
+    expect(info['จำนวนที่นั่ง']).toBe(200);
+  });
 });
+

@@ -3,7 +3,7 @@
  *
  * Backend: Firebase Cloud Firestore
  *   - 'participants' collection — all vendor/trader rows
- *   - 'boothMapping' collection — market → booth lookup
+ *   - 'market_zones' collection — market name → registration booth lookup
  *
  * DEV MODE: Set VITE_USE_MOCK_DATA=true in .env.development to use
  * local sample data without needing a Firebase connection.
@@ -48,7 +48,7 @@ export async function fetchAll() {
 
   const [participantSnap, boothSnap] = await Promise.all([
     getDocs(collection(db, 'participants')),
-    getDocs(collection(db, 'boothMapping')),
+    getDocs(collection(db, 'market_zones')),
   ]);
 
   const participants = participantSnap.docs.map(doc => ({
@@ -162,7 +162,7 @@ export async function approve(docId) {
  * Subscribe to real-time participant updates.
  * Calls the callback whenever participant data changes in Firestore.
  *
- * @param {Function} onUpdate - callback receiving { participants, boothMapping }
+ * @param {Function} onUpdate - callback receiving { participants, boothMapping } (boothMapping = market_zones docs)
  * @returns {Function} unsubscribe function
  */
 export function subscribeToUpdates(onUpdate) {
@@ -189,7 +189,7 @@ export function subscribeToUpdates(onUpdate) {
       onUpdate({ participants: latestParticipants, boothMapping: latestBooth });
     });
 
-    unsubBooth = onSnapshot(collection(db, 'boothMapping'), (snapshot) => {
+    unsubBooth = onSnapshot(collection(db, 'market_zones'), (snapshot) => {
       latestBooth = snapshot.docs.map(doc => ({
         _docId: doc.id,
         ...doc.data(),
