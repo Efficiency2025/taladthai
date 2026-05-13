@@ -121,6 +121,92 @@ describe('Cache Service', () => {
     expect(result.participant['ชื่อผู้ค้า']).toBe('นเรศ ชัยประสิทธิ์กุล');
   });
 
+  // ===================== VIP Search =====================
+
+  it('search() finds VIP participant by "VIP_D5" (underscore prefix)', async () => {
+    const data = {
+      participants: [
+        {
+          _docId: 'VIP_D5',
+          'ลำดับ': '',
+          'ชื่อผู้ค้า': 'VIP D5',
+          'เบอร์โทร': '',
+          'เลขที่โต๊ะ': 'D5',
+          'ตลาด': '',
+          'สถานะการเข้างาน': '',
+        },
+      ],
+      boothMapping: [],
+    };
+    fetchAll.mockResolvedValue(data);
+    await loadAll();
+
+    const result = search('VIP_D5');
+    expect(result).not.toBeNull();
+    expect(result.type).toBe('single');
+    expect(result.participant['ชื่อผู้ค้า']).toBe('VIP D5');
+  });
+
+  it('search() finds VIP participant by "VIP D5" (space prefix) via name match', async () => {
+    const data = {
+      participants: [
+        {
+          _docId: 'VIP_D5',
+          'ลำดับ': '',
+          'ชื่อผู้ค้า': 'VIP D5',
+          'เบอร์โทร': '',
+          'เลขที่โต๊ะ': 'D5',
+          'ตลาด': '',
+          'สถานะการเข้างาน': '',
+        },
+      ],
+      boothMapping: [],
+    };
+    fetchAll.mockResolvedValue(data);
+    await loadAll();
+
+    // "VIP D5" matches table D5 directly via stripped search
+    const result = search('VIP D5');
+    expect(result).not.toBeNull();
+    expect(result.type).toBe('single');
+    expect(result.participant['ชื่อผู้ค้า']).toBe('VIP D5');
+  });
+
+  it('search() finds VIP participant by lowercase "vip_d5"', async () => {
+    const data = {
+      participants: [
+        {
+          _docId: 'VIP_D5',
+          'ลำดับ': '',
+          'ชื่อผู้ค้า': 'VIP D5',
+          'เบอร์โทร': '',
+          'เลขที่โต๊ะ': 'D5',
+          'ตลาด': '',
+          'สถานะการเข้างาน': '',
+        },
+      ],
+      boothMapping: [],
+    };
+    fetchAll.mockResolvedValue(data);
+    await loadAll();
+
+    const result = search('vip_d5');
+    expect(result).not.toBeNull();
+    expect(result.type).toBe('single');
+    expect(result.participant['ชื่อผู้ค้า']).toBe('VIP D5');
+  });
+
+  it('search() returns null when VIP prefix strips to unknown table', async () => {
+    fetchAll.mockResolvedValue(createMockParticipants());
+    await loadAll();
+
+    // "VIP_ZZZ" → strips to "ZZZ", no table matches, no name matches
+    const result = search('VIP_ZZZ999');
+    expect(result).toBeNull();
+  });
+
+
+
   // ===================== Name Search =====================
 
   it('search() finds by exact name', async () => {

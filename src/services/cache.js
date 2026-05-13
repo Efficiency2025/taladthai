@@ -173,22 +173,42 @@ export function search(query) {
   const trimmedQuery = query.trim();
   if (!trimmedQuery) return null;
 
+  // Normalise VIP_XXXX → XXXX so that staff can search by doc-ID style names
+  // e.g. "VIP_D111-1" → try table match for "D111-1"
+  const vipPrefixMatch = trimmedQuery.match(/^VIP[_\s]+(.+)$/i);
+
   // --- 1. Try เลขที่โต๊ะ (table number match, case-insensitive) ---
   const normalizedQuery = normalizePhone(trimmedQuery);
+  // Also try without the VIP_ prefix for table lookups
   const upperQuery = trimmedQuery.toUpperCase();
+  const upperQueryStripped = vipPrefixMatch ? vipPrefixMatch[1].toUpperCase() : null;
   const tableMatches = [];
 
   for (const participant of participants) {
     const tableCell = String(participant['เลขที่โต๊ะ'] || '').trim();
     // Support comma-separated table numbers (e.g. "A141-1 , A141-2")
     const tables = tableCell.split(',').map(t => t.trim().toUpperCase());
-    if (tables.some(t => t && t === upperQuery)) {
+    if (tables.some(t => t && (t === upperQuery || (upperQueryStripped && t === upperQueryStripped)))) {
       tableMatches.push(participant);
     }
   }
 
   if (tableMatches.length > 0) {
     return buildSingleResult(tableMatches);
+  }
+
+  // --- 1b. VIP name match: "VIP_D111-1" → search ชื่อผู้ค้า starting with "VIP " + stripped ---
+  if (upperQueryStripped) {
+    const vipNameMatches = [];
+    for (const participant of participants) {
+      const name = String(participant['ชื่อผู้ค้า'] || '').trim().toUpperCase();
+      if (name && name === `VIP ${upperQueryStripped}`) {
+        vipNameMatches.push(participant);
+      }
+    }
+    if (vipNameMatches.length > 0) {
+      return buildSingleResult(vipNameMatches);
+    }
   }
 
   // --- 2. Try phone match ---

@@ -165,37 +165,68 @@ function transformSeats(rows) {
 
 /**
  * Sheet 1981204303 → participants collection
- * Doc ID: ลำดับ  (e.g. "2681")  — the sheet's own sequence ID
+ *
+ * Doc ID strategy:
+ *   - Normal rows: use ลำดับ (e.g. "2681")
+ *   - VIP rows:    ลำดับ is empty; use เลขที่โต๊ะ as the doc ID (e.g. "VIP_C151-1")
+ *     prefixed with "VIP_" to avoid collisions with numeric IDs.
  *
  * Relations:
  *   tableNumber → seats/<tableNumber>
  *   market      → (matches market_zones.name)
  */
 function transformParticipants(rows) {
-  return rows
-    .filter(r => r['ลำดับ'])
-    .map(r => {
-      const seq = String(r['ลำดับ']).trim();
-      const tableNumber = String(r['เลขที่โต๊ะ'] || '').trim();
-      const zoneCode = tableNumber ? tableToZoneCode(tableNumber) : null;
-      return {
-        docId: seq,
-        data: {
-          seq: Number(seq) || 0,
-          ชื่อผู้ค้า: String(r['ชื่อผู้ค้า'] || '').trim(),
-          ชื่อร้าน:  String(r['ชื่อร้าน']  || '').trim(),
-          ตลาด:     String(r['ตลาด']     || '').trim(),
-          เบอร์โทร: String(r['เบอร์โทร']  || '').trim(),
-          เลขที่โต๊ะ: tableNumber,
-          zoneCode,
-          // Preserve existing check-in status fields if they already exist (merge: true does this).
-          // These are set to empty string as defaults when document is new.
-          สถานะการเข้างาน: '',
-          เวลาอนุมัติ: '',
-          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-      };
+  const seen = new Set();
+  const ops = [];
+
+  for (const r of rows) {
+    const seq = String(r['ลำดับ'] || '').trim();
+    const name = String(r['ชื่อผู้ค้า'] || '').trim();
+    const tableNumber = String(r['เลขที่โต๊ะ'] || '').trim();
+
+    // Skip completely empty rows (no sequence, no name, no table)
+    if (!seq && !name && !tableNumber) continue;
+
+    // Derive a stable doc ID:
+    //   - Normal participants: their ลำดับ number
+    //   - VIP rows (empty ลำดับ): prefix "VIP_" + trimmed table number
+    let docId;
+    if (seq) {
+      docId = seq;
+    } else if (tableNumber) {
+      docId = `VIP_${tableNumber}`;
+    } else {
+      // No usable ID — skip
+      continue;
+    }
+
+    // Guard against duplicate doc IDs within the same sheet
+    if (seen.has(docId)) continue;
+    seen.add(docId);
+
+    const zoneCode = tableNumber ? tableToZoneCode(tableNumber) : null;
+
+    ops.push({
+      docId,
+      data: {
+        seq: Number(seq) || 0,
+        ชื่อผู้ค้า: name,
+        ชื่อร้าน:  String(r['ชื่อร้าน']  || '').trim(),
+        ตลาด:     String(r['ตลาด']     || '').trim(),
+        เบอร์โทร: String(r['เบอร์โทร']  || '').trim(),
+        เลขที่โต๊ะ: tableNumber,
+        zoneCode,
+        isVip: !seq && name.startsWith('VIP'),
+        // Preserve existing check-in status fields if they already exist (merge: true does this).
+        // These are set to empty string as defaults when document is new.
+        สถานะการเข้างาน: '',
+        เวลาอนุมัติ: '',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
     });
+  }
+
+  return ops;
 }
 
 /**
